@@ -1,4 +1,3 @@
-
 defmodule Todo.List do
   defstruct next_id: 1, entries: %{}
 
@@ -12,8 +11,6 @@ defmodule Todo.List do
       end
     )
   end
-
-  # def new(), do: %Todo.List{}
 
   # def new(), do: MultiDict.new()
 
@@ -94,4 +91,3 @@ defmodule MultiDict do
     Map.get(dict, key, [])
   end
 end
-
