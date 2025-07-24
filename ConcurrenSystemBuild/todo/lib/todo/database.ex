@@ -1,74 +1,64 @@
 defmodule Todo.Database do
   @moduledoc """
-  Si tratta di un GenServer il cui unico scopo è interagire con il file system.
-  Questo centralizza la logica di persistenza e la isola dal resto del sistema.
+  Gestisce un pool di DatabaseWorker e instrada le richieste al worker corretto
+  per garantire la sincronizzazione per chiave.
   """
   use GenServer
 
+  @pool_size 3
   @db_folder "./persist"
 
-  @doc """
-  Viene avvviato all'interno dell' init del Todo.Cache. In questo modo il database è 
-  pronto a ricevere richieste non appena il sistema principale è attivo. 
-  """
+  # L'interfaccia pubblica non cambia per i client
   def start do
-    # Salvataggio locale del name per evitare di imettere il pid, pero' ci permette di instanziare solo un database process 
     GenServer.start(__MODULE__, nil, name: __MODULE__)
-    
   end
 
-  @doc """
-  Riceve una chiave (il nome della to-do list) e i dati (la struttura della to-do list). 
-  Codifica i dati in formato binario e li scrive su un file il cui nome corrisponde alla chiave. 
-  Questa operazione è implementata nel handle_cast 
-  """
   def store(key, data) do
     GenServer.cast(__MODULE__, {:store, key, data})
   end
 
-  @doc """
-  Riceve una chiave (Il nome della to-do list), legge il file corrispondente, decodifica il contenuto binario e restituisce
-  la struttura dati della to-do list. Questa operazione è implementata come un call sincrono 
-  => handle_call({:get, key}, _, state)
-  """
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
   end
 
   @impl GenServer
   def init(_) do
-    # Create the specified folder if it doesn't exist
     File.mkdir_p!(@db_folder)
-    {:ok, nil}
+
+    # Avvia 3 worker e salva i loro PID nello stato
+    workers =
+      for _ <- 1..@pool_size do
+        {:ok, worker_pid} = Todo.DatabaseWorker.start(@db_folder)
+        worker_pid
+      end
+
+    {:ok, workers}
   end
 
   @impl GenServer
-  def handle_cast({:store, key, data}, state) do
-    spawn(fn ->
-      key
-      |> file_name()
-      |> File.write!(:erlang.term_to_binary(data))
-    end)
-
-    {:noreply, state}
+  def handle_cast({:store, key, data}, workers) do
+    # Sceglie un worker in base alla chiave e inoltra la richiesta
+    worker_pid = choose_worker(key, workers)
+    Todo.DatabaseWorker.store(worker_pid, key, data)
+    {:noreply, workers}
   end
 
   @impl GenServer
-  def handle_call({:get, key}, caller, state) do
-    spawn(fn ->
-      data =
-        case File.read(file_name(key)) do
-          {:ok, contents} -> :erlang.binary_to_term(contents)
-          _ -> nil
-        end
-
-      GenServer.reply(caller, data)
-    end)
-
-    {:noreply, state}
+  def handle_call({:get, key}, _from, workers) do
+    # Sceglie un worker in base alla chiave e inoltra la richiesta
+    worker_pid = choose_worker(key, workers)
+    # L'operazione `get` è sincrona, quindi attendiamo la risposta dal worker
+    data = Todo.DatabaseWorker.get(worker_pid, key)
+    {:reply, data, workers}
   end
 
-  defp file_name(key) do
-    Path.join(@db_folder, to_string(key))
+  # Funzione privata per selezionare un worker in modo deterministico
+  defp choose_worker(key, workers) do
+    # :erlang.phash2 calcola un hash e lo normalizza nell'intervallo da 0 a (@pool_size - 1)
+    worker_index = :erlang.phash2(key, @pool_size)
+    Enum.at(workers, worker_index)
   end
 end
+
+
+
