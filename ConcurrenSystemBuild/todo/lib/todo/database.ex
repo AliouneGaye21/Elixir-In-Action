@@ -59,6 +59,3 @@ defmodule Todo.Database do
     Enum.at(workers, worker_index)
   end
 end
-
-
-
