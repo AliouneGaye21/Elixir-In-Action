@@ -8,9 +8,10 @@ defmodule Todo.Database do
   @pool_size 3
   @db_folder "./persist"
 
-  # L'interfaccia pubblica non cambia per i client
-  def start do
-    GenServer.start(__MODULE__, nil, name: __MODULE__)
+  # 1. Interfaccia pubblica del server. I client non hanno bisogno di sapere
+  # chi sono i worker o come vengono scelti.
+  def start_link() do
+    GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
   def store(key, data) do
@@ -22,40 +23,50 @@ defmodule Todo.Database do
   end
 
   @impl GenServer
-  def init(_) do
+  def init(_args) do
+    IO.puts("Starting Database server")
     File.mkdir_p!(@db_folder)
-
-    # Avvia 3 worker e salva i loro PID nello stato
-    workers =
-      for _ <- 1..@pool_size do
-        {:ok, worker_pid} = Todo.DatabaseWorker.start(@db_folder)
-        worker_pid
-      end
-
-    {:ok, workers}
+    # 2. Avvia i worker e memorizza i loro PID nello stato del GenServer.
+    # Usiamo un map per un accesso più veloce tramite indice.
+    workers_map = start_workers()
+    {:ok, workers_map}
   end
 
+  # 3. Callback per la gestione delle richieste.
+  # La logica di scelta del worker è incapsulata qui.
+
   @impl GenServer
-  def handle_cast({:store, key, data}, workers) do
-    # Sceglie un worker in base alla chiave e inoltra la richiesta
-    worker_pid = choose_worker(key, workers)
+  def handle_cast({:store, key, data}, workers_map) do
+    # La logica di scelta del worker è eseguita all'interno del GenServer.
+    worker_pid = choose_worker(key, workers_map)
     Todo.DatabaseWorker.store(worker_pid, key, data)
-    {:noreply, workers}
+    # Ritorna il risultato e lo stato (immutato in questo caso).
+    {:noreply, workers_map}
   end
 
   @impl GenServer
-  def handle_call({:get, key}, _from, workers) do
-    # Sceglie un worker in base alla chiave e inoltra la richiesta
-    worker_pid = choose_worker(key, workers)
-    # L'operazione `get` è sincrona, quindi attendiamo la risposta dal worker
+  def handle_call({:get, key}, _from, workers_map) do
+    # La logica di scelta del worker è incapsulata qui.
+    worker_pid = choose_worker(key, workers_map)
     data = Todo.DatabaseWorker.get(worker_pid, key)
-    {:reply, data, workers}
+    # Risponde al client e ritorna lo stato (immutato in questo caso).
+    {:reply, data, workers_map}
   end
 
-  # Funzione privata per selezionare un worker in modo deterministico
-  defp choose_worker(key, workers) do
-    # :erlang.phash2 calcola un hash e lo normalizza nell'intervallo da 0 a (@pool_size - 1)
+  # 4. Funzioni private e helper.
+
+  defp start_workers() do
+    # Avvia i worker e li memorizza in un Map per un accesso indicizzato e veloce.
+    # Nota: usiamo un range per garantire che gli indici siano da 0 a @pool_size - 1.
+    for index <- 0..(@pool_size - 1), into: %{} do
+      {:ok, pid} = Todo.DatabaseWorker.start_link(@db_folder)
+      {index, pid}
+    end
+  end
+
+  defp choose_worker(key, workers_map) do
+    # :erlang.phash2 calcola un hash e lo normalizza nell'intervallo da 0 a (@pool_size - 1).
     worker_index = :erlang.phash2(key, @pool_size)
-    Enum.at(workers, worker_index)
+    Map.fetch!(workers_map, worker_index)
   end
 end

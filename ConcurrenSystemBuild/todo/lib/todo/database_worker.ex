@@ -6,8 +6,8 @@ defmodule Todo.DatabaseWorker do
   use GenServer
 
   # L'interfaccia pubblica richiede un PID, poiché i worker non sono registrati
-  def start(db_folder) do
-    GenServer.start(__MODULE__, db_folder)
+  def start_link(db_folder) do
+    GenServer.start_link(__MODULE__, db_folder)
   end
 
   def store(pid, key, data) do
@@ -20,14 +20,15 @@ defmodule Todo.DatabaseWorker do
 
   @impl GenServer
   def init(db_folder) do
+    IO.puts("Starting database worker.")
     # Salva il percorso della cartella del database nello stato del worker
     {:ok, db_folder}
   end
 
   @impl GenServer
   def handle_cast({:store, key, data}, db_folder) do
-    key
-    |> file_name(db_folder)
+    db_folder
+    |> file_name(key)
     |> File.write!(:erlang.term_to_binary(data))
 
     {:noreply, db_folder}
@@ -36,7 +37,7 @@ defmodule Todo.DatabaseWorker do
   @impl GenServer
   def handle_call({:get, key}, _from, db_folder) do
     data =
-      case File.read(file_name(key, db_folder)) do
+      case File.read(file_name(db_folder, key)) do
         {:ok, contents} -> :erlang.binary_to_term(contents)
         _ -> nil
       end
@@ -44,7 +45,7 @@ defmodule Todo.DatabaseWorker do
     {:reply, data, db_folder}
   end
 
-  defp file_name(key, db_folder) do
+  defp file_name(db_folder, key) do
     Path.join(db_folder, to_string(key))
   end
 end

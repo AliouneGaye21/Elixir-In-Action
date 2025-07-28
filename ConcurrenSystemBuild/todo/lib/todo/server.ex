@@ -4,8 +4,8 @@ defmodule Todo.Server do
   ## === API pubblica ===
 
   # the name is the to-do list name 
-  def start(name) do
-    GenServer.start(__MODULE__, name)
+  def start_link(name) do
+    GenServer.start_link(__MODULE__, name)
   end
 
   def add_entry(todo_server, new_entry) do
@@ -32,6 +32,8 @@ defmodule Todo.Server do
     # This allows us to split the initialization in two phases: one
     # which blocks the client process, and another one which can beperformed after the GenServer.start
     # The to-do list is set to nil because it will be overwritten in handle_continue
+
+    IO.puts("Starting Todo server for #{name}")
     {:ok, {name, nil}, {:continue, :init}}
   end
 
