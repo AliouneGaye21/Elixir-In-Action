@@ -1,11 +1,16 @@
 defmodule Todo.Server do
-  use GenServer
+  use GenServer, restart: :temporary #Because servers are started on demand, if the server isn't runnuing it will be started by the cache. If it crashes
+  #it won't be restarted automaticaly by the cache, but it will be restarted by the cache if it is needed again.
 
   ## === API pubblica ===
 
-  # the name is the to-do list name 
+  # the name is the to-do list name
   def start_link(name) do
-    GenServer.start_link(__MODULE__, name)
+    GenServer.start_link(__MODULE__, name, name: via_tuple(name))
+  end
+
+  defp via_tuple(name) do
+    Todo.ProcessRegistry.via_tuple({__MODULE__, name})
   end
 
   def add_entry(todo_server, new_entry) do
@@ -38,8 +43,8 @@ defmodule Todo.Server do
   end
 
   # the first callback invoked immediately after init/1
-  # The callback receives the provided argument (from the {:continue, some_arg} tuple) 
-  # and the server state from the init 
+  # The callback receives the provided argument (from the {:continue, some_arg} tuple)
+  # and the server state from the init
   @impl GenServer
   def handle_continue(:init, {name, nil}) do
     todo_list = Todo.Database.get(name) || Todo.List.new()
