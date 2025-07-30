@@ -18,6 +18,11 @@ defmodule Todo.Cache do
     )
   end
 
+  @doc """
+  Poiché il Todo.Cache è un supervisore e puo essere supervisionato a sua volta,
+  è necessario implementare il child_spec per poterlo avviare correttamente.
+  Questo è necessario per poterlo utilizzare in un albero di supervisione.
+  """
   def child_spec(_arg) do
     %{
       id: __MODULE__,

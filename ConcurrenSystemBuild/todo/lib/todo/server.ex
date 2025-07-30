@@ -54,7 +54,7 @@ defmodule Todo.Server do
   @impl true
   def handle_cast({:add_entry, new_entry}, {name, todo_list}) do
     new_list = Todo.List.add_entry(todo_list, new_entry)
-    Todo.Database.store(name, new_list)
+    Todo.Database.store(name, new_list) # Store the updated list in the database
     {:noreply, {name, new_list}}
   end
 
