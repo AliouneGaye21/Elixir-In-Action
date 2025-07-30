@@ -91,3 +91,26 @@ defmodule MultiDict do
     Map.get(dict, key, [])
   end
 end
+
+
+# CORREZIONE: Il protocollo Collectable deve essere implementato per la struttura
+# dati `Todo.List`, non per il processo `Todo.Server`.
+defimpl Collectable, for: Todo.List do
+  # `into` riceve la struttura dati iniziale in cui collezionare gli elementi.
+  def into(original_list) do
+    # Restituisce la struttura iniziale e la funzione che aggiungerà ogni elemento.
+    {original_list, &into_callback/2}
+  end
+
+  # Questa funzione viene chiamata per ogni elemento da aggiungere.
+  defp into_callback(todo_list, {:cont, entry}) do
+    # Delega la logica di aggiunta al modulo della struttura dati.
+    Todo.List.add_entry(todo_list, entry)
+  end
+
+  # Chiamata quando la collezione è terminata. Restituisce lo stato finale.
+  defp into_callback(todo_list, :done), do: todo_list
+
+  # Chiamata se il processo di collezione viene interrotto.
+  defp into_callback(_todo_list, :halt), do: :ok
+end
