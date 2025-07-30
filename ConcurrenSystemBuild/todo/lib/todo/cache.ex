@@ -39,7 +39,8 @@ defmodule Todo.Cache do
   def server_process(todo_list_name) do
     case start_child(todo_list_name) do
       {:ok, pid} -> pid
-      {:error, {:already_started, pid}} -> pid #returned due to the inner working of GenServer registration
+      # returned due to the inner working of GenServer registration
+      {:error, {:already_started, pid}} -> pid
     end
   end
 
