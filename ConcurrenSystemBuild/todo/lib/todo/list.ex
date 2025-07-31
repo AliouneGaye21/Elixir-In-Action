@@ -92,7 +92,6 @@ defmodule MultiDict do
   end
 end
 
-
 # CORREZIONE: Il protocollo Collectable deve essere implementato per la struttura
 # dati `Todo.List`, non per il processo `Todo.Server`.
 defimpl Collectable, for: Todo.List do

@@ -1,6 +1,8 @@
 defmodule Todo.Server do
-  use GenServer, restart: :temporary #Because servers are started on demand, if the server isn't runnuing it will be started by the cache. If it crashes
-  #it won't be restarted automaticaly by the cache, but it will be restarted by the cache if it is needed again.
+  # Because servers are started on demand, if the server isn't runnuing it will be started by the cache. If it crashes
+  use GenServer, restart: :temporary
+
+  # it won't be restarted automaticaly by the cache, but it will be restarted by the cache if it is needed again.
 
   ## === API pubblica ===
 
@@ -30,6 +32,7 @@ defmodule Todo.Server do
   end
 
   ## === Callback GenServer ===
+  @expiry_idle_timeout :timer.seconds(10)
 
   @impl GenServer
   # Use the name and keeps the list name in the process state so that the handle callbacks can use it.
@@ -48,26 +51,38 @@ defmodule Todo.Server do
   @impl GenServer
   def handle_continue(:init, {name, nil}) do
     todo_list = Todo.Database.get(name) || Todo.List.new()
-    {:noreply, {name, todo_list}}
+
+    {
+      :noreply,
+      {name, todo_list},
+      @expiry_idle_timeout
+    }
+  end
+
+  @impl GenServer
+  def handle_info(:timeout, {name, todo_list}) do
+    IO.puts("Stopping to-do server for #{name}")
+    {:stop, :normal, {name, todo_list}}
   end
 
   @impl true
   def handle_cast({:add_entry, new_entry}, {name, todo_list}) do
     new_list = Todo.List.add_entry(todo_list, new_entry)
-    Todo.Database.store(name, new_list) # Store the updated list in the database
-    {:noreply, {name, new_list}}
+    # Store the updated list in the database
+    Todo.Database.store(name, new_list)
+    {:noreply, {name, new_list}, @expiry_idle_timeout}
   end
 
   @impl true
   def handle_cast({:update_entry, id, fun}, state) do
     new_state = Todo.List.update_entry(state, id, fun)
-    {:noreply, new_state}
+    {:noreply, new_state, @expiry_idle_timeout}
   end
 
   @impl true
   def handle_cast({:delete_entry, id}, state) do
     new_state = Todo.List.delete_entry(state, id)
-    {:noreply, new_state}
+    {:noreply, new_state, @expiry_idle_timeout}
   end
 
   @impl GenServer
@@ -75,7 +90,8 @@ defmodule Todo.Server do
     {
       :reply,
       Todo.List.entries(todo_list, date),
-      {name, todo_list}
+      {name, todo_list},
+      @expiry_idle_timeout
     }
   end
 end
