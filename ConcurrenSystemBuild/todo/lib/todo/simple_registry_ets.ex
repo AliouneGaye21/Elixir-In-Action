@@ -6,8 +6,8 @@ defmodule SimpleRegistry do
   @registry_table :simple_registry_table
   # Tabella ausiliaria per la mappatura `monitor_ref -> key` (per la pulizia). Usiamo una seconda tabella perch'e altrimienti dovremo fare
   # match_bject sull' intera tabella principale per trovare la chiave da cancellare quando un processo monitorato termina.
-  #Con complessità O(n) in caso di molti processi registrati, sarebbe inefficiente.
-  #Invece, con questa tabella ausiliaria, possiamo trovare la chiave da cancellare in O(1).
+  # Con complessità O(n) in caso di molti processi registrati, sarebbe inefficiente.
+  # Invece, con questa tabella ausiliaria, possiamo trovare la chiave da cancellare in O(1).
   @refs_table :simple_registry_refs_table
 
   # =================================================
@@ -94,6 +94,7 @@ defmodule SimpleRegistry do
 
         # 3. Cancelliamo anche la voce dalla tabella dei riferimenti, non serve più.
         :ets.delete(@refs_table, ref)
+
       [] ->
         # Non dovrebbe accadere, ma per sicurezza non facciamo nulla se non troviamo il ref.
         :ok
