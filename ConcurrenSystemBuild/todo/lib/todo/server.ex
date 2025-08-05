@@ -108,10 +108,3 @@ defimpl Collectable, for: Todo.Server do
   defp into_callback(todo_list, :done), do: todo_list
   defp into_callback(_todo_list, :halt), do: :ok
 end
-
-#### ---------------TEst----------------------------
-# Todo.Server.start()
-# Todo.Server.add_entry(%{date: ~D[2025-07-22], title: "Scrivere GenServer"})
-# Todo.Server.entries(~D[2025-07-22])
-# Todo.Server.update_entry(1, fn e -> %{e | title: "Aggiornato"} end)
-# Todo.Server.delete_entry(1)

@@ -14,4 +14,6 @@ defmodule Todo.CacheTest do
     entries = Todo.Server.entries(alice, ~D[2023-12-19])
     assert [%{date: ~D[2023-12-19], title: "Dentist"}] = entries
   end
+
+  {:ok, cache} = Todo.Cache.start()
 end

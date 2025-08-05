@@ -6,20 +6,19 @@ defmodule Todo.DatabaseWorker do
   use GenServer
 
   # L'interfaccia pubblica richiede un PID, poiché i worker non sono registrati
-  def start_link({db_folder, worker_id}) do
+  def start_link(db_folder) do
     GenServer.start_link(
       __MODULE__,
-      db_folder,
-      name: via_tuple(worker_id)
+      db_folder
     )
   end
 
-  def store(worker_id, key, data) do
-    GenServer.cast(via_tuple(worker_id), {:store, key, data})
+  def store(pid, key, data) do
+    GenServer.cast(pid, {:store, key, data})
   end
 
-  def get(worker_id, key) do
-    GenServer.call(via_tuple(worker_id), {:get, key})
+  def get(pid, key) do
+    GenServer.call(pid, {:get, key})
   end
 
   defp via_tuple(worker_id) do
