@@ -32,7 +32,6 @@ defmodule Todo.Server do
   end
 
   ## === Callback GenServer ===
-  @expiry_idle_timeout :timer.seconds(10)
 
   @impl GenServer
   # Use the name and keeps the list name in the process state so that the handle callbacks can use it.
@@ -55,7 +54,7 @@ defmodule Todo.Server do
     {
       :noreply,
       {name, todo_list},
-      @expiry_idle_timeout
+      expiry_idle_timeout()
     }
   end
 
@@ -70,19 +69,19 @@ defmodule Todo.Server do
     new_list = Todo.List.add_entry(todo_list, new_entry)
     # Store the updated list in the database
     Todo.Database.store(name, new_list)
-    {:noreply, {name, new_list}, @expiry_idle_timeout}
+    {:noreply, {name, new_list}, expiry_idle_timeout()}
   end
 
   @impl true
   def handle_cast({:update_entry, id, fun}, state) do
     new_state = Todo.List.update_entry(state, id, fun)
-    {:noreply, new_state, @expiry_idle_timeout}
+    {:noreply, new_state, expiry_idle_timeout()}
   end
 
   @impl true
   def handle_cast({:delete_entry, id}, state) do
     new_state = Todo.List.delete_entry(state, id)
-    {:noreply, new_state, @expiry_idle_timeout}
+    {:noreply, new_state, expiry_idle_timeout()}
   end
 
   @impl GenServer
@@ -91,9 +90,11 @@ defmodule Todo.Server do
       :reply,
       Todo.List.entries(todo_list, date),
       {name, todo_list},
-      @expiry_idle_timeout
+      expiry_idle_timeout()
     }
   end
+
+  defp expiry_idle_timeout(), do: Application.fetch_env!(:todo, :todo_server_expiry)
 end
 
 defimpl Collectable, for: Todo.Server do

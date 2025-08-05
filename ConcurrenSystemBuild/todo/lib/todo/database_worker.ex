@@ -21,9 +21,9 @@ defmodule Todo.DatabaseWorker do
     GenServer.call(pid, {:get, key})
   end
 
-  defp via_tuple(worker_id) do
-    Todo.ProcessRegistry.via_tuple({__MODULE__, worker_id})
-  end
+  # defp via_tuple(worker_id) do
+  #   Todo.ProcessRegistry.via_tuple({__MODULE__, worker_id})
+  # end
 
   @impl GenServer
   def init(db_folder) do

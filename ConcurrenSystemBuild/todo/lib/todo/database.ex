@@ -5,7 +5,6 @@ defmodule Todo.Database do
   """
 
   @pool_size 3
-  @db_folder "./persist"
 
   # 1. Interfaccia pubblica del server. I client non hanno bisogno di sapere
   # chi sono i worker o come vengono scelti.
@@ -17,10 +16,10 @@ defmodule Todo.Database do
   #    Supervisor.start_link(children, strategy: :one_for_one)
   #  end
 
-  defp worker_spec(worker_id) do
-    default_worker_spec = {Todo.DatabaseWorker, {@db_folder, worker_id}}
-    Supervisor.child_spec(default_worker_spec, id: worker_id)
-  end
+  # defp worker_spec(worker_id) do
+  #   default_worker_spec = {Todo.DatabaseWorker, {@db_folder, worker_id}}
+  #   Supervisor.child_spec(default_worker_spec, id: worker_id)
+  # end
 
   def store(key, data) do
     :poolboy.transaction(
@@ -40,13 +39,15 @@ defmodule Todo.Database do
     )
   end
 
-  defp choose_worker(key) do
-    :erlang.phash2(key, @pool_size) + 1
-  end
+  # defp choose_worker(key) do
+  #   :erlang.phash2(key, @pool_size) + 1
+  # end
 
   # To turn the Database into a supervisor
   def child_spec(_) do
-    File.mkdir_p!(@db_folder)
+    db_settings = Application.fetch_env!(:todo, :database)
+    db_folder = Keyword.fetch!(db_settings, :db_folder)
+    File.mkdir_p!(db_folder)
 
     :poolboy.child_spec(
       __MODULE__,
@@ -55,7 +56,7 @@ defmodule Todo.Database do
         worker_module: Todo.DatabaseWorker,
         size: @pool_size
       ],
-      [@db_folder]
+      [db_folder]
     )
   end
 
