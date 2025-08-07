@@ -8,11 +8,23 @@ defmodule Todo.Server do
 
   # the name is the to-do list name
   def start_link(name) do
-    GenServer.start_link(__MODULE__, name, name: via_tuple(name))
+    GenServer.start_link(__MODULE__, name, name: global_name(name))
   end
 
-  defp via_tuple(name) do
-    Todo.ProcessRegistry.via_tuple({__MODULE__, name})
+  # defp via_tuple(name) do
+  #   Todo.ProcessRegistry.via_tuple({__MODULE__, name})
+  # end
+
+  defp global_name(name) do
+    # globa registration
+    {:global, {__MODULE__, name}}
+  end
+
+  def whereis(name) do
+    case :global.whereis_name({__MODULE__, name}) do
+      :undefined -> nil
+      pid -> pid
+    end
   end
 
   def add_entry(todo_server, new_entry) do
