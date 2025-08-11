@@ -29,6 +29,12 @@ defmodule Todo.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [release: :prod]
+    ]
+  end
+
   defp extra_applications(:dev), do: [:logger, :wx, :runtime_tools, :observer]
   defp extra_applications(_), do: [:logger, :runtime_tools]
 end
