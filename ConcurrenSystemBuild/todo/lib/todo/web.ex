@@ -84,4 +84,37 @@ defmodule Todo.Web do
     # Invia la risposta con status 200 OK e le voci formattate come corpo.
     |> Plug.Conn.send_resp(200, formatted_entries)
   end
+
+  post "/update_entry/:id" do
+    # Estrae l'ID dai parametri del percorso.
+    entry_id = conn.params["id"]
+    # Estrae gli altri parametri dalla query string.
+    conn = Plug.Conn.fetch_query_params(conn)
+    list_name = Map.fetch!(conn.params, "list")
+
+    # Prende solo gli attributi che vogliamo aggiornare (es. titolo e data).
+    attrs_to_update =
+      conn.params
+      |> Map.take(["title", "date"])
+      |> Enum.into(%{}, fn {key, value} -> {String.to_atom(key), value} end)
+
+    list_name
+    |> Todo.Cache.server_process()
+    |> Todo.Server.update_entry(entry_id, attrs_to_update)
+
+    send_resp(conn, 200, "Updated")
+  end
+
+  post "/delete_entry/:id" do
+    entry_id = String.to_integer(conn.params["id"])
+
+    conn = Plug.Conn.fetch_query_params(conn)
+    list_name = Map.fetch!(conn.params, "list")
+
+    list_name
+    |> Todo.Cache.server_process()
+    |> Todo.Server.delete_entry(entry_id)
+
+    send_resp(conn, 200, "Deleted")
+  end
 end

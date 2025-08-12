@@ -72,65 +72,78 @@ defmodule Todo.Server do
   @impl GenServer
   def handle_continue(:init, {name, nil}) do
     # Carica la to-do list dal database o ne crea una nuova se non esiste.
-    todo_list = Todo.Database.get(name) || Todo.List.new()
+    # todo_list = Todo.Database.get(name) || Todo.List.new()
 
     # Imposta lo stato finale del server e un timeout di inattività.
     # Se il server non riceve messaggi per `expiry_idle_timeout` millisecondi,
     # riceverà un messaggio `:timeout`.
-    {:noreply, {name, todo_list}, expiry_idle_timeout()}
+    {:noreply, name, expiry_idle_timeout()}
   end
 
   # Callback chiamata quando scatta il timeout di inattività.
   @impl GenServer
-  def handle_info(:timeout, {name, todo_list}) do
+  def handle_info(:timeout, name) do
     IO.puts("Stopping to-do server for #{name}")
     # Ferma il processo GenServer in modo controllato.
-    {:stop, :normal, {name, todo_list}}
+    {:stop, :normal, name}
   end
 
   # Gestisce la richiesta asincrona di aggiunta di una voce.
   @impl true
-  def handle_cast({:add_entry, new_entry}, {name, todo_list}) do
-    # Aggiunge la voce alla struttura dati in memoria.
-    new_list = Todo.List.add_entry(todo_list, new_entry)
-    # Salva la lista aggiornata nel database.
-    Todo.Database.store(name, new_list)
-    # Aggiorna lo stato del server e reimposta il timer di inattività.
-    {:noreply, {name, new_list}, expiry_idle_timeout()}
+  def handle_cast({:add_entry, new_entry}, name) do
+    Todo.Entries.create_entry(name, new_entry)
+    {:noreply, name, expiry_idle_timeout()}
   end
 
   # Gestisce la richiesta asincrona di aggiornamento.
   @impl true
-  def handle_cast({:update_entry, id, fun}, state) do
-    # NOTA: Questa implementazione aggiorna solo lo stato in memoria,
-    # ma non salva le modifiche nel database.
-    new_state = Todo.List.update_entry(state, id, fun)
-    {:noreply, new_state, expiry_idle_timeout()}
+  def handle_cast({:update_entry, entry_id, attrs}, name) do
+    # Usiamo `case` per controllare il risultato della funzione del contesto.
+    case Todo.Entries.update_entry(name, entry_id, attrs) do
+      {:ok, _updated_entry} ->
+        # Se tutto va bene, stampiamo un messaggio di successo.
+        IO.puts("Aggiornamento riuscito per l'ID ##{entry_id}")
+
+      {:error, reason} ->
+        # SE FALLISCE, ORA LO VEDREMO!
+        # Logghiamo il motivo dell'errore per il debugging.
+        IO.inspect(reason, label: "!!! Errore di aggiornamento")
+    end
+
+    # Lo stato non cambia, il timeout si resetta.
+    {:noreply, name, expiry_idle_timeout()}
   end
 
   # Gestisce la richiesta asincrona di cancellazione.
   @impl true
-  def handle_cast({:delete_entry, id}, state) do
-    # NOTA: Anche questa implementazione non salva le modifiche nel database.
-    new_state = Todo.List.delete_entry(state, id)
-    {:noreply, new_state, expiry_idle_timeout()}
+  def handle_cast({:delete_entry, entry_id}, name) do
+    case Todo.Entries.delete_entry(name, entry_id) do
+      {:ok, _deleted_entry} ->
+        IO.puts("Cancellazione riuscita per l'ID ##{entry_id}")
+
+      {:error, reason} ->
+        IO.inspect(reason, label: "!!! Errore di cancellazione")
+    end
+
+    {:noreply, name, expiry_idle_timeout()}
   end
 
   # Gestisce la richiesta sincrona per ottenere le voci.
   @impl GenServer
-  def handle_call({:entries, date}, _, {name, todo_list}) do
-    {
-      # La risposta da inviare al chiamante.
-      :reply,
-      Todo.List.entries(todo_list, date),
-      # Lo stato del server (che non cambia in questa operazione).
-      {name, todo_list},
-      # Reimposta il timer di inattività.
-      expiry_idle_timeout()
-    }
+  def handle_call({:entries, date}, _, name_or_state) do
+    # Chiediamo al modulo di contesto di recuperare le voci dal database.
+    name =
+      case name_or_state do
+        {list_name} -> list_name
+        list_name when is_binary(list_name) -> list_name
+      end
+
+    entries = Todo.Entries.get_entries_by_date(name, date)
+
+    # Rispondiamo con le voci trovate.
+    {:reply, entries, name_or_state, expiry_idle_timeout()}
   end
 
   # Funzione helper per recuperare il valore del timeout dalla configurazione.
   defp expiry_idle_timeout(), do: Application.fetch_env!(:todo, :todo_server_expiry)
 end
-
