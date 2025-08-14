@@ -22,6 +22,7 @@ COPY config config
 # Scarichiamo solo le dipendenze di produzione
 RUN mix deps.get --only prod
 
+COPY priv priv
 # Copiamo il codice sorgente dell'applicazione
 COPY lib lib
 
