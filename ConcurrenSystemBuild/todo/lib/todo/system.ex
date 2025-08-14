@@ -1,31 +1,20 @@
 defmodule Todo.System do
-  alias Ecto.Adapters.Postgres
   # Funzione pubblica per avviare l'albero di supervisione del sistema.
   # Viene tipicamente chiamata dal modulo `Todo.Application`.
   def start_link do
-    # Avvia un processo supervisore e lo collega al processo chiamante.
-    Supervisor.start_link(
-      # Lista dei processi figli che questo supervisore deve avviare e monitorare.
-      # L'ordine è importante: i figli vengono avviati in sequenza.
-      [
-        # Il modulo `Todo.Metrics` è attualmente disabilitato.
-        # Todo.Metrics,
+    # Definisce la lista dei processi figli da avviare e monitorare.
+    children = [
+      Todo.Repo,
+      {Cluster.Supervisor, [Application.get_env(:libcluster, :topologies)]},
+      Todo.Cache,
+      Todo.Web
+    ]
 
-        # Avvia il supervisore del database (che a sua volta gestisce i worker).
-        # Todo.Database,
-        # Avvia il supervisore dinamico per le to-do list.
-        Todo.Cache,
-        # Avvia il server web.
-        Todo.Web,
+    # Definisce le opzioni per il supervisore.
+    opts = [strategy: :one_for_one, name: Todo.Supervisor]
 
-        # Gestione database Postgres
-        Todo.Repo
-      ],
-      # Specifica la strategia di riavvio.
-      # :one_for_one significa che se un processo figlio termina,
-      # solo quel processo figlio verrà riavviato. Gli altri non saranno influenzati.
-      strategy: :one_for_one
-    )
+    # Avvia il processo supervisore.
+    Supervisor.start_link(children, opts)
   end
 
   # --- VECCHIA IMPLEMENTAZIONE (ORA COMMENTATA) ---

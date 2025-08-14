@@ -35,7 +35,7 @@ FROM debian:${DEBIAN}
 WORKDIR "/todo"
 
 # Installiamo le dipendenze di runtime necessarie, inclusa libncurses6 per iex
-RUN apt-get update -y && apt-get install -y openssl locales libncurses6
+RUN apt-get update -y && apt-get install -y openssl locales libncurses6 postgresql-client
 
 # Copiamo la release compilata dallo stage 'builder'
 COPY \
@@ -43,6 +43,8 @@ COPY \
  --chown=nobody:root \
  /todo/_build/prod/rel/todo ./
 
+COPY wait-for-postgres.sh ./
+RUN chmod +x wait-for-postgres.sh
 # Configuriamo le variabili d'ambiente per le locales
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 ENV LANG="en_US.UTF-8"

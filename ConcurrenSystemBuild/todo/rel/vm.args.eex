@@ -1,0 +1,5 @@
+# Nome del nodo Erlang
+-name <%= System.get_env("RELEASE_NAME") %>@<%= System.get_env("HOSTNAME") %>
+
+# Cookie per il clustering
+-setcookie <%= System.get_env("RELEASE_COOKIE") %>

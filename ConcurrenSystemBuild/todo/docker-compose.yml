@@ -1,0 +1,94 @@
+services:
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  migrator:
+    # image: todo-app
+    build: .
+    command: sh -c "./wait-for-postgres.sh && /todo/bin/todo eval 'Todo.Release.migrate()'"
+    depends_on:
+      db:
+        condition: service_started
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_dev
+      DB_HOSTNAME: db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: todo_dev
+      RELEASE_COOKIE: "my_super_secret_cookie"
+      # HOSTNAME: migrator
+
+  # app:
+  #   build: .
+  #   command: sh -c "./wait-for-postgres.sh && /todo/bin/todo start"
+  #   depends_on:
+  #     migrator:
+  #       condition: service_completed_successfully
+  #     db:
+  #       condition: service_started
+  #   ports:
+  #     - "5454"
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: todo_dev
+  #     DB_HOSTNAME: db
+  #     DB_USERNAME: postgres
+  #     DB_PASSWORD: postgres
+  #     DB_DATABASE: todo_dev
+  #     RELEASE_COOKIE: "my_super_secret_cookie"
+  #     RELEASE_NAME: "todo"
+  #     HOSTNAME: app
+
+  app-seed:
+    image: todo-app
+    build: .
+    hostname: app-seed # <-- Hostname fisso
+    command: sh -c "./wait-for-postgres.sh && /todo/bin/todo start"
+    depends_on:
+      migrator: 
+        condition: service_completed_successfully 
+    ports:
+      - "5454:5454" # Porta fissa
+    environment:
+      POSTGRES_USER: postgres
+      DB_HOSTNAME: db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_dev
+      #Per il cluster
+      RELEASE_COOKIE: "my_super_secret_cookie"
+      RELEASE_NAME: "todo"
+
+  app-follower:
+    image: todo-app
+    build: .
+    # Non ha bisogno di un hostname fisso
+    command: sh -c "./wait-for-postgres.sh && /todo/bin/todo start"
+    depends_on:
+      app-seed: # Si avvia dopo il seed
+        condition: service_started
+    ports:
+      - "5454" #porte dinamiche
+    environment:
+      DB_HOSTNAME: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_dev
+      
+      RELEASE_COOKIE: "my_super_secret_cookie"
+      RELEASE_NAME: "todo"
+
+
+volumes:
+  db_data:
+
