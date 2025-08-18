@@ -33,7 +33,7 @@ config :todo, Todo.Repo,
   database: System.get_env("POSTGRES_DB", "todo_dev"),
   # L'hostname è il nome del servizio db
   hostname: db_hostname,
-  pool_size: 10
+  pool_size: 3
 
 config :todo, ecto_repos: [Todo.Repo]
 

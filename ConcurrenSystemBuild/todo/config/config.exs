@@ -9,6 +9,6 @@ config :todo, Todo.Repo,
   database: System.get_env("DB_DATABASE", "todo_dev"),
   hostname: System.get_env("DB_HOSTNAME", "localhost"),
   # Il pool di connessioni è gestito da Ecto stesso
-  pool_size: 10
+  pool_size: 3
 
 config :todo, ecto_repos: [Todo.Repo]
