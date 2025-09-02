@@ -115,6 +115,7 @@ services:
       - "traefik.http.routers.todo-cluster.rule=Host(`todo.localhost`)"
       - "traefik.http.routers.todo-cluster.entrypoints=web"
       - "traefik.http.routers.todo-http.middlewares=https-redirect@file" # collegamento a config/conf/middlewares.yaml
+      - "traefik.http.routers.todo-http.service=todo-cluster"
 
       - "traefik.http.routers.todo-https.rule=Host(`todo.localhost`)"
       - "traefik.http.routers.todo-https.entrypoints=websecure"
@@ -149,6 +150,7 @@ services:
       - "traefik.http.routers.todo-cluster.rule=Host(`todo.localhost`)"
       - "traefik.http.routers.todo-cluster.entrypoints=web"
       - "traefik.http.routers.todo-http.middlewares=https-redirect@file"
+      - "traefik.http.routers.todo-http.service=todo-cluster"
 
       - "traefik.http.routers.todo-https.rule=Host(`todo.localhost`)"
       - "traefik.http.routers.todo-https.entrypoints=websecure"
